@@ -3,23 +3,18 @@ import { Q } from '@nozbe/watermelondb';
 import { type NativeStackNavigationOptions, type NativeStackNavigationProp } from '@react-navigation/native-stack';
 import isEmpty from 'lodash/isEmpty';
 import React from 'react';
-import { Share, Text, View } from 'react-native';
+import { Share } from 'react-native';
 import { connect } from 'react-redux';
 import { type Observable, type Subscription } from 'rxjs';
 import { type CompositeNavigationProp } from '@react-navigation/native';
 
 import { leaveRoom } from '../../actions/room';
-import Avatar from '../../containers/Avatar';
 import * as HeaderButton from '../../containers/Header/components/HeaderButton';
 import * as List from '../../containers/List';
-import { MarkdownPreview } from '../../containers/markdown';
-import RoomTypeIcon from '../../containers/RoomTypeIcon';
 import SafeAreaView from '../../containers/SafeAreaView';
-import Status from '../../containers/Status';
 import {
 	type IApplicationState,
 	type IBaseScreen,
-	type ISubscription,
 	type IUser,
 	SubscriptionType,
 	type TSubscriptionModel
@@ -33,16 +28,10 @@ import { type ChatsStackParamList } from '../../stacks/types';
 import { withTheme } from '../../theme';
 import { showConfirmationAlert, showErrorAlert } from '../../lib/methods/helpers/info';
 import log, { events, logEvent } from '../../lib/methods/helpers/log';
-import Touch from '../../containers/Touch';
-import sharedStyles from '../Styles';
-import styles from './styles';
 import { ERoomType } from '../../definitions/ERoomType';
-import { E2E_ROOM_TYPES } from '../../lib/constants/keys';
-import { themes } from '../../lib/constants/colors';
 import { getPermalinkChannel } from '../../lib/methods/getPermalinks';
 import {
 	canAutoTranslate as canAutoTranslateMethod,
-	getRoomAvatar,
 	getRoomTitle,
 	getUidDirectMessage,
 	hasPermission,
@@ -54,8 +43,6 @@ import {
 	getUserInfo,
 	toggleBlockUser,
 	getRoomCounters,
-	getDepartmentInfo,
-	getTagsList,
 	getChannelInfo,
 	teamListRoomsOfUser,
 	convertTeamToChannel,
@@ -67,17 +54,12 @@ import {
 import { getSubscriptionByRoomId } from '../../lib/database/services/Subscription';
 import { type IActionSheetProvider, withActionSheet } from '../../containers/ActionSheet';
 import { type MasterDetailInsideStackParamList } from '../../stacks/MasterDetailStack/types';
-import { closeLivechat } from '../../lib/methods/helpers/closeLivechat';
-import { type ILivechatDepartment } from '../../definitions/ILivechatDepartment';
-import { type ILivechatTag } from '../../definitions/ILivechatTag';
 import CallSection from './components/CallSection';
 import { type TNavigation } from '../../stacks/stackType';
 import * as EncryptionUtils from '../../lib/encryption/utils';
 import Navigation from '../../lib/navigation/appNavigation';
 import RoomInfoSection from './components/RoomInfoSection';
 import E2EEncryptionSection from './components/E2EEncryptionSection';
-import LastSection from './components/LastSection';
-import OmnichannelSection from './components/OmnichannelSection';
 
 type StackType = ChatsStackParamList & TNavigation;
 
@@ -91,7 +73,6 @@ interface IRoomActionsViewProps extends IActionSheetProvider, IBaseScreen<StackT
 	jitsiEnableTeams: boolean;
 	jitsiEnableChannels: boolean;
 	encryptionEnabled: boolean;
-	fontScale: number;
 	serverVersion: string | null;
 	editRoomPermission?: string[];
 	toggleRoomE2EEncryptionPermission?: string[];
@@ -400,72 +381,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 		return result;
 	};
 
-	closeLivechat = async () => {
-		try {
-			const {
-				room: { rid, departmentId }
-			} = this.state;
-			const { livechatRequestComment, isMasterDetail, navigation } = this.props;
-			let departmentInfo: ILivechatDepartment | undefined;
-			let tagsList: ILivechatTag[] | undefined;
-
-			if (departmentId) {
-				const result = await getDepartmentInfo(departmentId);
-				if (result.success) {
-					departmentInfo = result.department as ILivechatDepartment;
-				}
-			}
-
-			if (departmentInfo?.requestTagBeforeClosingChat) {
-				tagsList = await getTagsList();
-			}
-
-			if (!livechatRequestComment && !departmentInfo?.requestTagBeforeClosingChat) {
-				const comment = I18n.t('Chat_closed_by_agent');
-				return closeLivechat({ rid, isMasterDetail, comment });
-			}
-
-			navigation.navigate('CloseLivechatView', { rid, departmentId, departmentInfo, tagsList });
-		} catch (e) {
-			log(e);
-		}
-	};
-
-	placeOnHoldLivechat = () => {
-		const { navigation } = this.props;
-		const { room } = this.state;
-		showConfirmationAlert({
-			title: I18n.t('Are_you_sure_question_mark'),
-			message: I18n.t('Would_like_to_place_on_hold'),
-			confirmationText: I18n.t('Yes'),
-			onPress: async () => {
-				try {
-					await onHoldLivechat(room.rid);
-					navigation.navigate('RoomsListView');
-				} catch (e: any) {
-					showErrorAlert(e.data?.error, I18n.t('Oops'));
-				}
-			}
-		});
-	};
-
-	handleReturnLivechat = () => {
-		const {
-			room: { rid }
-		} = this.state;
-		showConfirmationAlert({
-			message: I18n.t('Would_you_like_to_return_the_inquiry'),
-			confirmationText: I18n.t('Yes'),
-			onPress: async () => {
-				try {
-					await returnLivechat(rid);
-				} catch (e: any) {
-					showErrorAlert(e.reason, I18n.t('Oops'));
-				}
-			}
-		});
-	};
-
 	updateRoomMember = async () => {
 		const { room } = this.state;
 
@@ -483,33 +398,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 		}
 	};
 
-	toggleBlockUser = async () => {
-		logEvent(events.RA_TOGGLE_BLOCK_USER);
-		const { room } = this.state;
-		const { rid, blocker } = room;
-		const { member } = this.state;
-		try {
-			await toggleBlockUser(rid, member._id as string, !blocker);
-		} catch (e) {
-			logEvent(events.RA_TOGGLE_BLOCK_USER_F);
-			log(e);
-		}
-	};
-
-	handleReportUser = () => {
-		const { navigation } = this.props;
-		const { member } = this.state;
-		const { name, _id: userId, username } = member;
-		if (!name || !userId || !username) {
-			return;
-		}
-		navigation.navigate('ReportUserView', {
-			name,
-			userId,
-			username
-		});
-	};
-
 	handleShare = () => {
 		logEvent(events.RA_SHARE);
 		const { room } = this.state;
@@ -520,51 +408,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 		Share.share({
 			message: permalink
 		});
-	};
-
-	leaveChannel = () => {
-		const { room } = this.state;
-		const { dispatch } = this.props;
-
-		showConfirmationAlert({
-			message: I18n.t('Are_you_sure_you_want_to_leave_the_room', { room: getRoomTitle(room) }),
-			confirmationText: I18n.t('Yes_action_it', { action: I18n.t('leave') }),
-			onPress: () => dispatch(leaveRoom(ERoomType.c, room))
-		});
-	};
-
-	convertTeamToChannel = async () => {
-		const { room } = this.state;
-		const { navigation, userId } = this.props;
-
-		try {
-			if (!room.teamId) {
-				return;
-			}
-			this.setState({ loading: true });
-			const result = await teamListRoomsOfUser({ teamId: room.teamId, userId });
-
-			if (result.success) {
-				if (result.rooms?.length) {
-					const teamChannels = result.rooms.map(r => ({
-						rid: r._id,
-						name: r.name,
-						teamId: r.teamId
-					}));
-					navigation.navigate('SelectListView', {
-						title: 'Converting_Team_To_Channel',
-						data: teamChannels,
-						infoText: 'Select_Team_Channels_To_Delete',
-						nextAction: (data: string[]) => this.convertTeamToChannelConfirmation(data)
-					});
-				} else {
-					this.convertTeamToChannelConfirmation();
-				}
-			}
-			this.setState({ loading: false });
-		} catch (e) {
-			this.convertTeamToChannelConfirmation();
-		}
 	};
 
 	handleConvertTeamToChannel = async (selected: string[]) => {
@@ -595,50 +438,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 		});
 	};
 
-	leaveTeam = async () => {
-		const { room } = this.state;
-		const { navigation, dispatch, userId } = this.props;
-
-		try {
-			if (!room.teamId) {
-				return;
-			}
-			this.setState({ loading: true });
-			const result = await teamListRoomsOfUser({ teamId: room.teamId, userId });
-
-			if (result.success) {
-				if (result.rooms?.length) {
-					const teamChannels = result.rooms.map(r => ({
-						rid: r._id,
-						name: r.name,
-						teamId: r.teamId,
-						alert: r.isLastOwner
-					}));
-					navigation.navigate('SelectListView', {
-						title: 'Leave_Team',
-						data: teamChannels as any,
-						infoText: 'Select_Team_Channels',
-						nextAction: data => dispatch(leaveRoom(ERoomType.t, room, data)),
-						showAlert: () => showErrorAlert(I18n.t('Last_owner_team_room'), I18n.t('Cannot_leave'))
-					});
-				} else {
-					showConfirmationAlert({
-						message: I18n.t('You_are_leaving_the_team', { team: getRoomTitle(room) }),
-						confirmationText: I18n.t('Yes_action_it', { action: I18n.t('leave') }),
-						onPress: () => dispatch(leaveRoom(ERoomType.t, room))
-					});
-				}
-			}
-			this.setState({ loading: false });
-		} catch (e) {
-			showConfirmationAlert({
-				message: I18n.t('You_are_leaving_the_team', { team: getRoomTitle(room) }),
-				confirmationText: I18n.t('Yes_action_it', { action: I18n.t('leave') }),
-				onPress: () => dispatch(leaveRoom(ERoomType.t, room))
-			});
-		}
-	};
-
 	handleConvertToTeam = async () => {
 		logEvent(events.RA_CONVERT_TO_TEAM);
 		try {
@@ -654,15 +453,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 		}
 	};
 
-	convertToTeam = () => {
-		showConfirmationAlert({
-			title: I18n.t('Confirmation'),
-			message: I18n.t('Convert_to_Team_Warning'),
-			confirmationText: I18n.t('Convert'),
-			onPress: () => this.handleConvertToTeam()
-		});
-	};
-
 	handleMoveToTeam = async (selected: string[]) => {
 		logEvent(events.RA_MOVE_TO_TEAM);
 		try {
@@ -675,46 +465,6 @@ class RoomActionsView extends React.Component<IRoomActionsViewProps, IRoomAction
 			logEvent(events.RA_MOVE_TO_TEAM_F);
 			log(e);
 			showErrorAlert(I18n.t('There_was_an_error_while_action', { action: I18n.t('moving_channel_to_team') }));
-		}
-	};
-
-	moveToTeam = async () => {
-		try {
-			const { navigation } = this.props;
-			const db = database.active;
-			const subCollection = db.get('subscriptions');
-			const teamRooms = await subCollection.query(Q.where('team_main', true)).fetch();
-
-			if (teamRooms.length) {
-				const data = teamRooms.map(team => ({
-					rid: team.teamId as string,
-					t: team.t,
-					name: team.name,
-					teamMain: team.teamMain
-				}));
-				navigation.navigate('SelectListView', {
-					title: 'Move_to_Team',
-					infoText: 'Move_Channel_Paragraph',
-					nextAction: () => {
-						navigation.push('SelectListView', {
-							title: 'Select_Team',
-							data,
-							isRadio: true,
-							isSearch: true,
-							onSearch: onChangeText => this.searchTeam(onChangeText),
-							nextAction: selected =>
-								showConfirmationAlert({
-									title: I18n.t('Confirmation'),
-									message: I18n.t('Move_to_Team_Warning'),
-									confirmationText: I18n.t('Yes_action_it', { action: I18n.t('move') }),
-									onPress: () => this.handleMoveToTeam(selected)
-								})
-						});
-					}
-				});
-			}
-		} catch (e) {
-			log(e);
 		}
 	};
 
