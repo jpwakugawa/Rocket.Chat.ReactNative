@@ -9,7 +9,10 @@ type LastSectionProps = {
   theme: string;
 };
 
-const LastSection: React.FC<LastSectionProps> = ({ room, joined, loading, theme }) => {
+const LeaveRoomIcon = () => <List.Icon name='logout' color='red' />;
+
+const LastSection: React.FC<LastSectionProps> = (props: LastSectionProps) => {
+  const { room, joined } = props;
   if (!joined || room.t === 'l') {
     return null;
   }
@@ -21,7 +24,7 @@ const LastSection: React.FC<LastSectionProps> = ({ room, joined, loading, theme 
         title='Leave Room'
         onPress={() => console.log('Leave Room')}
         testID='last-section-leave-room'
-        left={() => <List.Icon name='logout' color='red' />} // Adjust color dynamically
+        left={LeaveRoomIcon}
         showActionIndicator
       />
       <List.Separator />

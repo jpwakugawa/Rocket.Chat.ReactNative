@@ -10,7 +10,11 @@ type OmnichannelSectionProps = {
   };
 };
 
-const OmnichannelSection: React.FC<OmnichannelSectionProps> = ({ room, omnichannelPermissions }) => {
+const ForwardGuestIcon = () => <List.Icon name='chat-forward' />;
+const PauseIcon = () => <List.Icon name='pause' />;
+
+const OmnichannelSection: React.FC<OmnichannelSectionProps> = (props: OmnichannelSectionProps) => {
+  const { room, omnichannelPermissions } = props;
   if (room.t !== 'l') {
     return null;
   }
@@ -22,7 +26,7 @@ const OmnichannelSection: React.FC<OmnichannelSectionProps> = ({ room, omnichann
           <List.Item
             title='Forward Guest'
             onPress={() => console.log('Forward Guest')}
-            left={() => <List.Icon name='chat-forward' />}
+            left={ForwardGuestIcon}
             showActionIndicator
           />
           <List.Separator />
@@ -33,7 +37,7 @@ const OmnichannelSection: React.FC<OmnichannelSectionProps> = ({ room, omnichann
           <List.Item
             title='Place on Hold'
             onPress={() => console.log('Place on Hold')}
-            left={() => <List.Icon name='pause' />}
+            left={PauseIcon}
             showActionIndicator
           />
           <List.Separator />

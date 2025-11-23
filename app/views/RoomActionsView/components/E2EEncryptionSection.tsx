@@ -9,7 +9,10 @@ type E2EEncryptionSectionProps = {
   canEdit: boolean;
 };
 
-const E2EEncryptionSection: React.FC<E2EEncryptionSectionProps> = ({ room, canToggleEncryption, canEdit }) => {
+const EncryptedIcon = () => <List.Icon name='encrypted' />;
+
+const E2EEncryptionSection: React.FC<E2EEncryptionSectionProps> = (props: E2EEncryptionSectionProps) => {
+  const { room, canToggleEncryption, canEdit } = props;
   const hasPermission = canToggleEncryption || canEdit;
 
   if (!E2E_ROOM_TYPES[room.t]) {
@@ -22,7 +25,7 @@ const E2EEncryptionSection: React.FC<E2EEncryptionSectionProps> = ({ room, canTo
       <List.Item
         title='E2E Encryption'
         subtitle={room.encrypted ? 'Enabled' : 'Disabled'}
-        left={() => <List.Icon name='encrypted' />}
+        left={EncryptedIcon}
         onPress={() => console.log('Navigate to E2E Encryption settings')}
         disabled={!hasPermission}
         showActionIndicator
