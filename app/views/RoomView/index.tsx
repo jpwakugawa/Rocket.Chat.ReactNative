@@ -1,7 +1,6 @@
 import React from 'react';
 import { AccessibilityInfo, InteractionManager, PixelRatio, Text, View } from 'react-native';
 import { connect } from 'react-redux';
-import parse from 'url-parse';
 import moment from 'moment';
 import { Q } from '@nozbe/watermelondb';
 import { dequal } from 'dequal';
@@ -910,8 +909,8 @@ class RoomView extends React.Component<IRoomViewProps, IRoomViewState> {
 			return;
 		}
 		try {
-			const parsedUrl = parse(messageUrl, true);
-			const messageId = parsedUrl.query.msg;
+			const parsedUrl = new URL(messageUrl);
+			const messageId = parsedUrl.searchParams.get('msg');
 			if (messageId) {
 				await this.jumpToMessage(messageId, isFromReply);
 			}
